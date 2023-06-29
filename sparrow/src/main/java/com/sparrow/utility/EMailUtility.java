@@ -60,9 +60,9 @@ public class EMailUtility {
     }
 
     public Boolean sendMail(String toAddress, String subject, String content,
-        String language) throws BusinessException {
+                            String language) throws BusinessException {
         String websiteName = ConfigUtility.getLanguageValue(
-            ConfigKeyLanguage.WEBSITE_NAME, language);
+                ConfigKeyLanguage.WEBSITE_NAME, language);
 
         this.setHost(ConfigUtility.getValue(Config.EMAIL_HOST));
         this.setFrom(ConfigUtility.getValue(Config.EMAIL_FROM));
@@ -86,6 +86,13 @@ public class EMailUtility {
         this.setSubject(subject);
         this.setContent(content);
         this.setWebSitName(websiteName);
+        logger.info("to {} from {},host {},local:{},user-name:{},email password is {}",
+                this.getTo(),
+                this.getFrom(),
+                this.getHost(),
+                this.getLocalAddress(),
+                this.getUsername(),
+                emailPassword);
 
         return this.sendMail();
     }
@@ -97,7 +104,10 @@ public class EMailUtility {
         try {
             Properties props = System.getProperties();
             props.put("mail.smtp.localhost", this.getLocalAddress());
-            props.put("mail.smtp.host", this.getHost());
+            props.put("mail.smtp.host",this.getHost());
+            props.put("mail.smtp.port",465);
+            props.put("mail.smtp.protocol","smtp");
+            props.put("mail.smtp.ssl.enable","true");
             if (!authentication) {
                 props.put("mail.smtp.auth", "false");
             } else {
@@ -109,7 +119,7 @@ public class EMailUtility {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
                     return new PasswordAuthentication(finalEmailUserName,
-                        finalEmailPassword);
+                            finalEmailPassword);
                 }
             });
             session.setDebug(true);
@@ -119,7 +129,7 @@ public class EMailUtility {
             fromAddress.setPersonal(this.getWebSitName());
             message.setFrom(fromAddress);
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(
-                this.getTo()));
+                    this.getTo()));
             message.setSubject(this.getSubject());
             message.setContent(this.getContent(), "text/html;charset=gb2312");
             message.saveChanges();
@@ -128,11 +138,13 @@ public class EMailUtility {
                 try {
                     transport = session.getTransport("smtp");
                     transport.connect(this.getHost(), this.getUsername(),
-                        this.getPassword());
+                            this.getPassword());
+                    logger.info("host:{},username:{},password:{}", this.getHost()
+                            , this.getUsername(), this.getPassword());
                     transport.sendMessage(message, message.getAllRecipients());
                 } catch (Exception e) {
                     logger.error("send email error", e);
-                    throw new BusinessException(SparrowError.GLOBAL_EMAIL_SEND_FAIL, Collections.singletonList((Object) this.getTo()));
+                    throw e;
                 } finally {
                     if (transport != null) {
                         transport.close();
